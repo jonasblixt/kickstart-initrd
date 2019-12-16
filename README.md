@@ -1,0 +1,2 @@
+# kickstart-initrd
+Kickstart initrd
