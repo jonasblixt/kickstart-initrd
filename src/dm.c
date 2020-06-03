@@ -143,9 +143,9 @@ void dm_mount(struct bpak_header *h)
         printf("Could not get fs part!\n");
 
 
-    uint64_t part_size_4k_blocks = bpak_part_size(p) / 4096;
+    size_t part_size_4k_blocks = bpak_part_size(p) / 4096;
 
-    printf("Fs size %i bytes, %i 512-byte blocks, %i 4k blocks\n",
+    printf("Fs size %zu bytes, %zu 512-byte blocks, %zu 4k blocks\n",
                 bpak_part_size(p), bpak_part_size(p) / 512, bpak_part_size(p) / 4096);
     spec->sector_start = 0;
     spec->length = bpak_part_size(p) / 512;
@@ -156,7 +156,7 @@ void dm_mount(struct bpak_header *h)
 
 
     snprintf(tbl, 1024,
-        "1 /dev/mmcblk0p3 /dev/mmcblk0p3 4096 4096 %i %i sha256 %s %s",
+        "1 /dev/mmcblk0p3 /dev/mmcblk0p3 4096 4096 %zu %zu sha256 %s %s",
                     part_size_4k_blocks, part_size_4k_blocks,
                     verity_root_hash_str, verity_salt_str);
     dmi->data_size = 1024*16;
