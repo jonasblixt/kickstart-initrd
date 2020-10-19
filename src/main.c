@@ -409,7 +409,7 @@ int main(int argc, char **argv)
     /* Read information about which root system we are going to
      * try to mount. ks-initrd currently only supports the punchboot
      * boot loader */
-    if (ks_readfile("/proc/device-tree/chosen/active-system",
+    if (ks_readfile("/proc/device-tree/chosen/pb,active-system",
                     active_system, ACTIVE_SYSTEM_BUF_SZ) != 0)
     {
         ks_panic("Could not read active-system\n");
