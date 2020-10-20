@@ -50,3 +50,12 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+Makefile.in
+aclocal.m4
+autom4te.cache/
+bpak-build/
+build-aux/
+build/
+configure
+m4/
+
