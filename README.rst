@@ -5,7 +5,7 @@
 .. image:: https://travis-ci.org/jonasblixt/kickstart-initrd.svg?branch=master
     :target: https://travis-ci.org/jonasblixt/kickstart-initrd
 .. image:: https://scan.coverity.com/projects/20419/badge.svg
-    :target: https://scan.coverity.com/projects/jonasblixt-bpak
+    :target: https://scan.coverity.com/projects/jonasblixt-kickstart-initrd
 
 ------------
 Introduction
