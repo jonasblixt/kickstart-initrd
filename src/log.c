@@ -1,3 +1,12 @@
+/**
+ * Kickstart
+ *
+ * Copyright (C) 2020 Jonas Blixt <jonpe960@gmail.com>
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ */
+
 #include <stdio.h>
 #include <stdarg.h>
 #include <time.h>

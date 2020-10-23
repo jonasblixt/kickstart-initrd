@@ -1,3 +1,12 @@
+/**
+ * Kickstart
+ *
+ * Copyright (C) 2020 Jonas Blixt <jonpe960@gmail.com>
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ */
+
 #ifndef KS_CRYPTO_H_
 #define KS_CRYPTO_H_
 
