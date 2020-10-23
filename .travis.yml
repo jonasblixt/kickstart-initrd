@@ -6,7 +6,7 @@ before_install:
   - git clone https://github.com/jonasblixt/bpak --depth 1 --branch v0.4.0
 script:
     - cd bpak && autoreconf -fi && ./configure && make && sudo make install && cd .. && sudo ldconfig
-    - autoreconf -fi && ./configure --enable-code-coverage && make check
+    - autoreconf -fi && ./configure KEYSTORE_FILE=pki/internal_keystore.bpak --enable-code-coverage && make check
     - cat test/test-suite.log
 jobs:
     include:
