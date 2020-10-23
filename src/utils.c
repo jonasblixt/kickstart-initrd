@@ -7,6 +7,9 @@
 
 #include "log.h"
 #include "crypto_common.h"
+#include "kickstart.h"
+
+static enum ks_system active_system;
 
 void ks_do_panic(int delay_s)
 {
@@ -43,4 +46,35 @@ int ks_bpak_hash_to_ks(enum bpak_hash_kind kind)
         default:
             return KS_HASH_INVALID;
     }
+}
+
+/* Read information about which root system we are going to
+ * try to mount. ks-initrd currently only supports the punchboot
+ * boot loader */
+enum ks_system ks_active_system(void)
+{
+    char active_system_bfr[16];
+
+    if (active_system != KS_SYSTEM_INVALID)
+        return active_system;
+
+    if (ks_readfile("/proc/device-tree/chosen/pb,active-system",
+                    active_system_bfr, sizeof(active_system_bfr)) != 0)
+    {
+        ks_log(KS_LOG_ERROR, "Could not read active-system\n");
+        return -1;
+    }
+
+    switch (active_system_bfr[0]) {
+        case 'A':
+            active_system = KS_SYSTEM_A;
+        break;
+        case 'B':
+            active_system = KS_SYSTEM_B;
+        break;
+        default:
+            active_system = KS_SYSTEM_INVALID;
+    }
+
+    return active_system;
 }

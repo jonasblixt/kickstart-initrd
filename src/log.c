@@ -35,7 +35,7 @@ void ks_log(enum ks_log_level log_level, const char *fmt, ...)
     if (log_level >= KS_LOG_END)
         return;
 
-    printf("[%5lld.%6lld] ks: ", ts.tv_sec, ts.tv_nsec / (int64_t) 1E3);
+    printf("[%5lld.%06lld] ks: ", ts.tv_sec, ts.tv_nsec / (int64_t) 1E3);
     va_list args;
     va_start(args, fmt);
     vprintf(fmt, args);

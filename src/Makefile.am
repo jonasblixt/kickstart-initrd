@@ -6,10 +6,11 @@ kickstart_initrd_SOURCES  = main.c \
                             log.c \
                             utils.c \
                             keystore.c \
-                            dm.c \
+                            verity.c \
                             gpt.c \
                             keys.c \
-                            ks_mbedtls.c
+                            ks_mbedtls.c \
+                            bpak_helpers.c
 
 kickstart_initrd_SOURCES += uuid/clear.c \
                             uuid/compare.c \

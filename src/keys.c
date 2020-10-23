@@ -30,6 +30,7 @@
 #include "log.h"
 #include "utils.h"
 #include "crypto.h"
+#include "bpak_helpers.h"
 
 static uint32_t available_key_ids[KS_MAX_KEYS];
 static struct ks_keystore *keystore;
@@ -52,7 +53,7 @@ int ks_keys_init(void)
     fd = open("/proc/device-tree/chosen/pb,slc-available-keys", O_RDONLY);
 
     if (fd == -1) {
-        ks_log(KS_LOG_ERROR, "Could not open pb,slc-available-keys\n");
+        ks_log(KS_LOG_ERROR, "%s: Could not open pb,slc-available-keys\n", __func__);
         rc = -1;
         goto err_free_out;
     }
@@ -60,7 +61,7 @@ int ks_keys_init(void)
     ssize_t read_bytes = read(fd, available_key_ids,
                                 sizeof(uint32_t) * KS_MAX_KEYS);
 
-    ks_log(KS_LOG_DEBUG, "Read %zu bytes\n", read_bytes);
+    ks_log(KS_LOG_DEBUG, "%s: Read %zu bytes\n", __func__, read_bytes);
     close(fd);
 
     /* Fix endianess */
@@ -72,10 +73,11 @@ int ks_keys_init(void)
 
         available_key_ids[i] = tmp;
 
-        ks_log(KS_LOG_DEBUG, "Available key: 0x%08x\n", tmp);
+        ks_log(KS_LOG_DEBUG, "%s: Available key: 0x%08x\n", __func__, tmp);
     }
 
-    ks_log(KS_LOG_DEBUG, "Internal keystore: %8.8x\n", keystore_ks_internal.id);
+    ks_log(KS_LOG_DEBUG, "%s: Internal keystore: %8.8x\n",
+                        __func__, keystore_ks_internal.id);
 
     /* Copy the bpak keystore into our own structure*/
     keystore->id = keystore_ks_internal.id;
@@ -85,12 +87,12 @@ int ks_keys_init(void)
         struct bpak_key *bpak_key = keystore_ks_internal.keys[i];
 
         if (ks_keys_ok(bpak_key->id) != 0) {
-            ks_log(KS_LOG_DEBUG, "Key 0x%08x is not accepted, discarding\n",
-                                bpak_key->id);
+            ks_log(KS_LOG_DEBUG, "%s: Key 0x%08x is not accepted, discarding\n",
+                                __func__, bpak_key->id);
             continue;
         }
 
-        ks_log(KS_LOG_DEBUG, "Adding key 0x%08x\n", bpak_key->id);
+        ks_log(KS_LOG_DEBUG, "%s: Adding key 0x%08x\n", __func__, bpak_key->id);
 
         if (keystore->keys == NULL) {
             keystore->keys = malloc(sizeof(struct ks_key));
@@ -200,7 +202,7 @@ int ks_keys_get(uint32_t keystore_id, uint32_t key_id, struct ks_key **key_out)
     }
 
     if (!found_keystore) {
-        ks_log(KS_LOG_ERROR, "Invalid keystore: %08x\n", keystore_id);
+        ks_log(KS_LOG_ERROR, "%s: Invalid keystore: %08x\n", __func__, keystore_id);
         return -1;
     }
 
@@ -216,8 +218,8 @@ int ks_keys_get(uint32_t keystore_id, uint32_t key_id, struct ks_key **key_out)
     }
 
     if (!found_key) {
-        ks_log(KS_LOG_ERROR, "Could not find key 0x%08x in keystore 0x%08x",
-                                key_id, keystore_id);
+        ks_log(KS_LOG_ERROR, "%s: Could not find key 0x%08x in keystore 0x%08x\n",
+                                __func__, key_id, keystore_id);
         return -1;
     }
 
@@ -243,71 +245,9 @@ int ks_keys_add_from_device(const char *device_filename)
         return -1;
     }
 
-    lseek(fd, -4096, SEEK_END);
+    /* Verify and load header */
 
-    if (read(fd, &h, sizeof(h)) != sizeof(h)) {
-        ks_log(KS_LOG_ERROR, "%s: could not read header\n", __func__);
-        rc = -1;
-        goto err_out_close;
-    }
-
-    rc = bpak_valid_header(&h);
-
-    if (rc != BPAK_OK)
-    {
-        ks_log(KS_LOG_ERROR, "%s: Invalid bpak header, %s\n", __func__,
-                                    bpak_error_string(rc));
-        goto err_out_close;
-    }
-
-    lseek(fd, 0, SEEK_SET);
-
-    /* Verify header signature */
-    struct ks_key *ver_key = NULL;
-    struct ks_hash_context hash_ctx;
-    char signature_tmp[BPAK_SIGNATURE_MAX_BYTES];
-    size_t signature_sz = sizeof(signature_tmp);
-
-    rc = ks_keys_get(h.keystore_id, h.key_id, &ver_key);
-
-    if (rc != 0) {
-        ks_log(KS_LOG_ERROR, "%s: Key not found %08x [%08x]\n", __func__,
-                                h.key_id, h.keystore_id);
-        goto err_out_close;
-    }
-
-    ks_log(KS_LOG_DEBUG, "%s: Using key %08x [%08x]\n", __func__,
-                                    h.key_id, h.keystore_id);
-
-    rc = bpak_copyz_signature(&h, signature_tmp, &signature_sz);
-
-    if (rc != 0) {
-        ks_log(KS_LOG_ERROR, "%s: Could not extract signature\n", __func__);
-        goto err_out_close;
-    }
-
-    rc = ks_hash_init(&hash_ctx, ks_bpak_hash_to_ks(h.hash_kind));
-
-    if (rc != 0) {
-        ks_log(KS_LOG_ERROR, "%s: hash ctx init failed\n", __func__);
-        goto err_out_close;
-    }
-
-    rc = ks_hash_update(&hash_ctx, &h, sizeof(h));
-
-    if (rc != 0) {
-        ks_log(KS_LOG_ERROR, "%s: Header hashing failed\n", __func__);
-        goto err_out_close;
-    }
-
-    rc = ks_hash_finalize(&hash_ctx, NULL, 0);
-
-    if (rc != 0) {
-        ks_log(KS_LOG_ERROR, "%s: Header hashing failed\n", __func__);
-        goto err_out_close;
-    }
-
-    rc = ks_pk_verify(signature_tmp, signature_sz, &hash_ctx, ver_key);
+    rc = bpak_helper_load_and_verify_header(fd, &h);
 
     if (rc != 0) {
         ks_log(KS_LOG_ERROR, "%s: Signature verification failed\n", __func__);
@@ -318,56 +258,14 @@ int ks_keys_add_from_device(const char *device_filename)
 
     /* Verify payload hash */
 
-    rc = ks_hash_init(&hash_ctx, ks_bpak_hash_to_ks(h.hash_kind));
+    rc = bpak_helper_verify_payload(fd, &h);
 
     if (rc != 0) {
-        ks_log(KS_LOG_ERROR, "%s: hash ctx init failed\n", __func__);
+        ks_log(KS_LOG_ERROR, "%s: Payload verification failed\n", __func__);
         goto err_out_close;
     }
 
-    char key_hash_buf[1024];
-
-    bpak_foreach_part(&h, part) {
-        if (part->id == 0)
-            break;
-        if (part->flags & BPAK_FLAG_EXCLUDE_FROM_HASH)
-            continue;
-
-        lseek(fd, bpak_part_offset(&h, part) - 4096, SEEK_SET);
-
-        uint64_t key_size = bpak_part_size(part);
-
-        if (key_size > sizeof(key_hash_buf)) {
-            ks_log(KS_LOG_ERROR, "%s: Key size > buffer\n", __func__);
-            goto err_out_close;
-        }
-
-        size_t read_bytes = read(fd, key_hash_buf, key_size);
-
-        ks_log(KS_LOG_DEBUG, "%s: Read %zu bytes\n", __func__, read_bytes);
-
-        rc = ks_hash_update(&hash_ctx, key_hash_buf, key_size);
-
-        if (rc != 0) {
-            ks_log(KS_LOG_ERROR, "%s: Header hashing failed\n", __func__);
-            goto err_out_close;
-        }
-    }
-
-    rc = ks_hash_finalize(&hash_ctx, NULL, 0);
-
-    if (rc != 0) {
-        ks_log(KS_LOG_ERROR, "%s: Header hashing failed\n", __func__);
-        goto err_out_close;
-    }
-
-    if (memcmp(hash_ctx.buf, h.payload_hash, hash_ctx.size) != 0) {
-        ks_log(KS_LOG_ERROR, "%s: Payload hash mismatch\n", __func__);
-        rc = -1;
-        goto err_out_close;
-    }
-
-    ks_log(KS_LOG_DEBUG, "%s: Payload hash OK\n", __func__);
+    ks_log(KS_LOG_DEBUG, "%s: Payload OK\n", __func__);
 
     uint32_t *keystore_id;
 
@@ -426,6 +324,8 @@ int ks_keys_add_from_device(const char *device_filename)
         memset(key, 0, sizeof(*key));
 
         key->data = malloc(key_size+1);
+        key->size = key_size;
+        key->id = part->id;
 
         if (key->data == NULL) {
             ks_log(KS_LOG_ERROR, "%s: malloc failed\n", __func__);

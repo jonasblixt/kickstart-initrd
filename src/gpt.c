@@ -138,10 +138,13 @@ int gpt_init(const char *device, struct gpt_table **gpt_)
     uint64_t no_of_blocks;
     off_t offset;
     size_t sz;
+    struct stat statbuf;
     int fd;
 
     if (!gpt)
         return GPT_ERROR;
+
+    while (stat(device, &statbuf) != 0) {}
 
     memset(gpt, 0, sizeof(*gpt));
     *gpt_ = gpt;
