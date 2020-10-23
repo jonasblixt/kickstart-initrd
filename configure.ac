@@ -1,7 +1,7 @@
 dnl Kickstart-initrd
 
 AC_PREREQ(2.59)
-AC_INIT([kickstart-initrd], [0.1.0], [Jonas Blixt, <jonpe960@gmail.com>])
+AC_INIT([kickstart-initrd], [0.2.0], [Jonas Blixt, <jonpe960@gmail.com>])
 
 m4_pattern_forbid([^AX_(CHECK_ENABLE_DEBUG|CODE_COVERAGE|COMPILER_FLAGS|COMPILER_FLAGS_(CFLAGS|CXXFLAGS|LDFLAGS))\b],
   [Unexpanded AX_ macro found. Please install GNU autoconf-archive])
@@ -25,7 +25,7 @@ dnl Check if Libtool is present
 dnl Libtool is used for building share libraries
 AC_PROG_LIBTOOL
 
-PKG_CHECK_MODULES(BPAK, [bpak >= 0.1.0])
+PKG_CHECK_MODULES(BPAK, [bpak >= 0.4.0])
 AC_SUBST(BPAK_CFLAGS)
 AC_SUBST(BPAK_LIBS)
 

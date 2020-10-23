@@ -11,6 +11,8 @@
 #include <bpak/bpak.h>
 #include <bpak/utils.h>
 
+#include "log.h"
+
 #define DM_IOCTL 0xfd
 #define DM_MAX_TYPE_NAME 16
 #define DM_NAME_LEN 128
@@ -64,7 +66,7 @@ enum
 
 #define DM_READONLY_FLAG    (1 << 0)
 
-void dm_mount(struct bpak_header *h)
+int dm_mount(struct bpak_header *h)
 {
     int fd = open("/dev/mapper/control", O_RDWR);
     int rc;
@@ -82,24 +84,24 @@ void dm_mount(struct bpak_header *h)
 
     if (fd == -1)
     {
-        printf("Could not open /dev/mapper/control\n");
-        return;
+        ks_log(KS_LOG_ERROR, "Could not open /dev/mapper/control\n");
+        return -1;
     }
 
     rc = bpak_get_meta(h, 0xe68fc9be, (void **) &verity_root_hash);
 
     if (rc != BPAK_OK)
     {
-        printf("Could not read root hash meta");
-        return;
+        ks_log(KS_LOG_ERROR, "Could not read root hash meta");
+        return -1;
     }
 
     rc = bpak_get_meta(h, 0x7c9b2f93, (void **) &verity_salt);
 
     if (rc != BPAK_OK)
     {
-        printf("Could not read salt meta");
-        return;
+        ks_log(KS_LOG_ERROR, "Could not read salt meta");
+        return -1;
     }
 
     bpak_bin2hex(verity_root_hash, 32, verity_root_hash_str, sizeof(verity_root_hash_str));
@@ -117,9 +119,18 @@ void dm_mount(struct bpak_header *h)
 
     rc = ioctl(fd, DM_DEV_CREATE, dmi);
 
-    printf("ioctl rc = %i\n", rc);
+    if (rc != 0) {
+        ks_log(KS_LOG_ERROR, "DM_DEV_CREATE ioctl failed %i\n", rc);
+        return rc;
+    }
+
     rc = mknod("/dev/mapper/87258a48-64f2-42d0-b972-4db4aa86f2a6", S_IFBLK, dmi->dev);
-    printf("mknod = %i\n", rc);
+
+    if (rc != 0) {
+        ks_log(KS_LOG_ERROR, "mknod failed %i\n", rc);
+        return rc;
+    }
+
     dev = dmi->dev;
 
     /* Load table */
@@ -139,21 +150,21 @@ void dm_mount(struct bpak_header *h)
 
     rc = bpak_get_part(h, bpak_id("fs"), &p);
 
-    if (rc != BPAK_OK)
-        printf("Could not get fs part!\n");
-
+    if (rc != BPAK_OK) {
+        ks_log(KS_LOG_ERROR, "Could not get fs part!\n");
+        return rc;
+    }
 
     size_t part_size_4k_blocks = bpak_part_size(p) / 4096;
 
-    printf("Fs size %zu bytes, %zu 512-byte blocks, %zu 4k blocks\n",
+    ks_log(KS_LOG_DEBUG, "Fs size %zu bytes, %zu 512-byte blocks, %zu 4k blocks\n",
                 bpak_part_size(p), bpak_part_size(p) / 512, bpak_part_size(p) / 4096);
+
     spec->sector_start = 0;
     spec->length = bpak_part_size(p) / 512;
     spec->next = 0;
     spec->status = 0;
     sprintf(spec->target_type, "verity");
-
-
 
     snprintf(tbl, 1024,
         "1 /dev/mmcblk0p3 /dev/mmcblk0p3 4096 4096 %zu %zu sha256 %s %s",
@@ -162,11 +173,14 @@ void dm_mount(struct bpak_header *h)
     dmi->data_size = 1024*16;
     dmi->data_start = sizeof(struct dm_ioctl);
 
-    printf("Table:\n%s\n", tbl);
+    ks_log(KS_LOG_DEBUG, "Table: %s\n", tbl);
 
     rc = ioctl(fd, DM_TABLE_LOAD, buf);
 
-    printf("ioctl rc = %i\n", rc);
+    if (rc != 0) {
+        ks_log(KS_LOG_ERROR, "DM_TABLE_LOAD ioctl failed %i\n", rc);
+        return rc;
+    }
 
     /* Resume device */
 
@@ -186,8 +200,13 @@ void dm_mount(struct bpak_header *h)
 
     rc = ioctl(fd, DM_DEV_SUSPEND, buf);
 
-    printf("ioctl rc = %i\n", rc);
+    if (rc != 0) {
+        ks_log(KS_LOG_ERROR, "DM_DEV_SUSPEND ioctl failed %i\n", rc);
+        return rc;
+    }
 
     close(fd);
     free(buf);
+
+    return rc;
 }

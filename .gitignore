@@ -59,3 +59,5 @@ build/
 configure
 m4/
 
+gen.sh
+aminclude_static.am

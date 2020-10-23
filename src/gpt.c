@@ -1,3 +1,12 @@
+/**
+ * Kickstart
+ *
+ * Copyright (C) 2019 Jonas Blixt <jonpe960@gmail.com>
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -91,8 +100,8 @@ static int gpt_is_valid(struct gpt_header *hdr, struct gpt_part_hdr *part)
     return gpt_has_valid_part_array(hdr, part);
 }
 
-int gpt_part_by_uuid(struct gpt_table *gpt, const char *uuid,
-                        struct gpt_part_hdr **part)
+int gpt_part_and_index_by_uuid(struct gpt_table *gpt, const char *uuid,
+                            struct gpt_part_hdr **part, int *index)
 {
     unsigned char guid[16];
     uuid_to_guid((uint8_t *) uuid, guid);
@@ -107,11 +116,19 @@ int gpt_part_by_uuid(struct gpt_table *gpt, const char *uuid,
         if (memcmp(p->uuid, guid, 16) == 0)
         {
             (*part) = p;
+            if (index != NULL)
+                (*index) = i;
             return GPT_OK;
         }
     }
 
     return GPT_ERROR;
+}
+
+int gpt_part_by_uuid(struct gpt_table *gpt, const char *uuid,
+                        struct gpt_part_hdr **part)
+{
+    return gpt_part_and_index_by_uuid(gpt, uuid, part, NULL);
 }
 
 int gpt_init(const char *device, struct gpt_table **gpt_)
@@ -239,6 +256,21 @@ int gpt_part_name(struct gpt_table *gpt, uint8_t part_index,
 
     snprintf(buf, size, "%sp%u", gpt->device, (part_index+1));
     return GPT_OK;
+}
+
+int gpt_uuid_to_device_name(struct gpt_table *gpt, char *uuid,
+                                            char *output, size_t sz)
+{
+    int rc;
+    int part_index = -1;
+    struct gpt_part_hdr *part;
+
+    rc = gpt_part_and_index_by_uuid(gpt, uuid, &part, &part_index);
+
+    if (rc != 0)
+        return rc;
+
+    return gpt_part_name(gpt, part_index, output, sz);
 }
 
 int gpt_free(struct gpt_table *gpt_table)

@@ -3,6 +3,6 @@
 
 #include <bpak/bpak.h>
 
-void dm_mount(struct bpak_header *h);
+int dm_mount(struct bpak_header *h);
 
 #endif

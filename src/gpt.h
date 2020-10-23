@@ -1,3 +1,12 @@
+/**
+ * Kickstart
+ *
+ * Copyright (C) 2019 Jonas Blixt <jonpe960@gmail.com>
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ */
+
 #ifndef INCLUDE_GPT_H_
 #define INCLUDE_GPT_H_
 
@@ -5,6 +14,7 @@
 #include <stdbool.h>
 
 #define GPT_PART_NAME_MAX_SIZE 36
+#define GPT_MAX_PARTS 128
 
 enum
 {
@@ -51,7 +61,7 @@ struct gpt_table
 {
     const char *device;
     struct gpt_header hdr;
-    struct gpt_part_hdr part[128];
+    struct gpt_part_hdr part[GPT_MAX_PARTS];
 };
 
 #define PB_GPT_ATTR_OK       (1 << 7) /*Bit 55*/
@@ -64,4 +74,6 @@ int gpt_part_by_uuid(struct gpt_table *gpt, const char *uuid,
 int gpt_free(struct gpt_table *gpt_table);
 int gpt_part_name(struct gpt_table *gpt, uint8_t part_index,
                     char *buf, size_t size);
+int gpt_uuid_to_device_name(struct gpt_table *gpt, char *uuid,
+                                            char *output, size_t sz);
 #endif  // INCLUDE_GPT_H_
